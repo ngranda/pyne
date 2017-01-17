@@ -7,59 +7,39 @@ else:
     exec('from _exceptions import *')
 
 
+OBJECTS_MAP = {
+        'A': A,
+        'B': B,
+        'BN': BN,
+        'BZ': BZ,
+        ':': Colon,
+        'D': D,
+        'E': E,
+        'EN': EN,
+        'ES': ES,
+        'F': F,
+        'G': G,
+        'H': H,
+        'I': I,
+        'L': L,
+        'O': O,
+        'P': P,
+        'S': S,
+        '/': Slash,
+        'SP': SP,
+        'SS': SS,
+        'T': T,
+        'TL': TL,
+        'TR': TR,
+        'X': X,
+        'Z': Z
+        }
+
 def get_edit_descriptor_obj(name):
     '''Returns a new object instance from a string'''
     name = name.upper()
-    if name == 'A':
-        return A()
-    elif name == 'B':
-        return B()
-    elif name == 'BN':
-        return BN()
-    elif name == 'BZ':
-        return BZ()
-    elif name == ':':
-        return Colon()
-    elif name == 'D':
-        return D()
-    elif name == 'E':
-        return E()
-    elif name == 'EN':
-        return EN()
-    elif name == 'ES':
-        return ES()
-    elif name == 'F':
-        return F()
-    elif name == 'G':
-        return G()
-    elif name == 'H':
-        return H()
-    elif name == 'I':
-        return I()
-    elif name == 'L':
-        return L()
-    elif name == 'O':
-        return O()
-    elif name == 'P':
-        return P()
-    elif name =='S':
-        return S()
-    elif name == '/':
-        return Slash()
-    elif name == 'SP':
-        return SP()
-    elif name == 'SS':
-        return SS()
-    elif name == 'T':
-        return T()
-    elif name == 'TL':
-        return TL()
-    elif name == 'TR':
-        return TR()
-    elif name == 'X':
-        return X()
-    elif name == 'Z':
-        return Z()
+    if name in OBJECTS_MAP:
+        return OBJECTS_MAP[name]()
     else:
         raise InvalidFormat('Expected an edit descriptor, got %s' % name)
 
