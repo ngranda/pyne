@@ -63,7 +63,7 @@ def setup():
     print('File "{}" has been written'.format(config_filename))
     print('Fill out the fields in these filse then run ">> gtcadis.py step1"')
 
-def names_dict():
+def _names_dict():
     names = ['h1', 'd', 'h3', 'he3', 'he4', 'li6', 'li7', 'be9', 'b10', 'b11',
     'c12', 'n14', 'n15', 'o16', 'f19', 'na23', 'mgnat', 'al27', 'si28', 'si29',
     'si30', 'p31', 'snat', 'cl35', 'cl37', 'knat', 'canat', 'ti46', 'ti47', 'ti48',
@@ -86,7 +86,7 @@ def names_dict():
 
     return names_dict
  
-def cards():
+def _cards():
     cards = {"block1": {"isn": 16,
                         "maxscm": '3E8',
                         "maxlcm": '6E8',
@@ -124,7 +124,7 @@ def step1():
     src_vol = [config.getfloat('step1', 'src_vol')]
     print ('src vol', len(src_vol))
     
-    names_dict = names_dict()
+    names_dict = _names_dict()
     
     sc = [np.linspace(float(xmesh[0]), float(xmesh[1]), float(xmesh[2])),
           np.linspace(float(ymesh[0]), float(ymesh[1]), float(ymesh[2])),
@@ -160,7 +160,7 @@ def step1():
     source, dg = isotropic_vol_source(hdf5, mesh, cells, spectra, intensities)
     
     ngroup = 217
-    cards = cards()
+    cards = _cards()
     
     write_partisn_input(mesh, hdf5, ngroup, cards=cards, dg=dg, names_dict=names_dict, data_hdf5path="/materials", nuc_hdf5path="/nucid", fine_per_coarse=1)
 
