@@ -5,7 +5,7 @@ from os.path import isfile
 
 import numpy as np
 from pyne.mesh import Mesh
-from pyne.partisn import write_partisn_input, isotropic_vol_source
+from pyne.partisn import write_partisn_input, isotropic_vol_source, mesh_to_isotropic_source
 from pyne.dagmc import discretize_geom, load
 from pyne import nucname
 from pyne.bins import pointwise_collapse
@@ -16,28 +16,11 @@ config_filename = 'config.ini'
 config = \
 """
 # Optional step to assess all materials in geometry for compatibility with 
-SNILB criteria
+# SNILB criteria
 [step0]
 
 # Prepare PARTISN input file for adjoint photon transport
 [step1]
-# Path to hdf5 geometry file
-geom_file:
-# ID of adjoint photon source cell
-src_cell:
-# Discretization in x-direction
-# xmin, xmax, number of divisions
-xmesh:
-# Discretization in y-direction
-# ymin, ymax, number of divisions
-ymesh:
-# Discretization in z-direction
-# zmin, zmax, number of divisions
-zmesh:
-# Source intensity
-intensities:
-# Volume of source cell
-src_vol:
 
 # Calculate T matrix for each material
 [step2]
@@ -47,9 +30,13 @@ src_vol:
 
 # Prepare PARTISN input for adjoint neutron transport
 [step4]
+# Path to neutron geometry hdf5 file
+geom_file:
+# Path to adj neutron source hdf5 file
+adj_n_src_file:
 
 # Generate Monte Carlo variance reduction parameters 
-(biased source and weight windows)
+# (biased source and weight windows)
 [step5]
 
 
@@ -109,60 +96,29 @@ def _cards():
             }
     return cards
    
-def step1():
+def step4():
+
     config = ConfigParser.ConfigParser()
     config.read(config_filename)
 
-    hdf5 = config.get('step1', 'geom_file') 
-    cells = [config.get('step1', 'src_cell')]
-    print ('cells', len(cells))
-    xmesh = config.get('step1', 'xmesh').split(',')
-    ymesh = config.get('step1', 'ymesh').split(',')
-    zmesh = config.get('step1', 'zmesh').split(',')
-    #intensities = [config.get('step1', 'intensities')]
-    #print (len(intensities))
-    src_vol = [config.getfloat('step1', 'src_vol')]
-    print ('src vol', len(src_vol))
-    
+    geom = config.get('step4', 'geom_file')
+    print(geom)
+
+    adj_n_src = config.get('step4', 'adj_n_src_file')
+    print(adj_n_src)
+    mesh = Mesh(structured=True, mesh=adj_n_src)
+
+    source = mesh_to_isotropic_source(mesh, "adj_n_src")
+
     names_dict = _names_dict()
-    
-    sc = [np.linspace(float(xmesh[0]), float(xmesh[1]), float(xmesh[2])),
-          np.linspace(float(ymesh[0]), float(ymesh[1]), float(ymesh[2])),
-          np.linspace(float(zmesh[0]), float(zmesh[1]), float(zmesh[2]))]
-    
-    mesh = Mesh(structured=True, structured_coords=sc)
-    #hdf5 = "../../geom/photon/photon.h5m"
-    
-    # the first bin has been replaced with 1 for log int.
-    photon_bins =  [1, 1e4, 2e4, 3e4, 4.5e4, 6e4, 7e4, 7.5e4, 1e5, 1.5e5, 2e5, 3e5, 4e5,
-                    4.5e5, 5.1e5, 5.12e5, 6e5, 7e5, 8e5, 1e6, 1.33e6, 1.34e6, 1.5e6, 1.66e6, 2e6,
-                    2.5e6, 3e6, 3.5e6, 4e6, 4.5e6, 5e6, 5.5e6, 6e6, 6.5e6, 7e6, 7.5e6, 8e6, 1e7,
-                    1.2e7, 1.4e7, 2e7, 3e7, 5e7]
-    # convert to MEV
-    photon_bins = np.array([x/1E6 for x in photon_bins])
-    de = np.array([0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.1, 0.15, 0.2, 0.3,
-                   0.4, 0.5, 0.6, 0.8, 1, 2, 4, 6, 8, 10])
-    df = np.array([0.0485, 0.1254, 0.205, 0.2999, 0.3381, 0.3572, 0.378, 0.4066, 0.4399, 0.5172,
-                   0.7523, 1.0041, 1.5083, 1.9958, 2.4657, 2.9082, 3.7269, 4.4834, 7.4896,
-                   12.0153, 15.9873, 19.9191, 23.76])
-    # convert to Sv/s per photon FLUX (not fluence)
-    df = np.array([x*1E-12 for x in df])
-    photon_spectrum = pointwise_collapse(photon_bins, de, df, logx=True, logy=True)
-    # anything below 0.01 MeV should be assigned the DF value of 0.01 MeV
-    photon_spectrum[0] = df[0]
-    spectra = [np.append(photon_spectrum, np.zeros(175))]
-    print('spectra', len(spectra))
-    # The spectrum is normalized by PyNE, so we need to mutliply by the sum of intensities in the spectrum.
-    # Additionally, we divide by the volume of the source cell in order to get source density.
-    intensities = [np.sum(spectra)/src_vol]
-    
-    load(hdf5)
-    source, dg = isotropic_vol_source(hdf5, mesh, cells, spectra, intensities)
-    
+
     ngroup = 217
+
     cards = _cards()
-    
-    write_partisn_input(mesh, hdf5, ngroup, cards=cards, dg=dg, names_dict=names_dict, data_hdf5path="/materials", nuc_hdf5path="/nucid", fine_per_coarse=1)
+
+    write_partisn_input(mesh, geom, ngroup, cards=cards, names_dict=names_dict, data_hdf5path="/materials", nuc_hdf5path="/nucid", fine_per_coarse=1)
+
+    print('Run PARTISN and then run gtcadis.py step5')
 
 def main():
 
@@ -172,17 +128,21 @@ def main():
     setup_help = ('Prints the file "config.ini" to be\n'
                   'filled in by the user.\n')
     step1_help = 'Creates the PARTISN input file for adjoint photon transport.'
+    step4_help = 'Creates the PARTISN input file for adjoint neutron transport'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
+    step4_parser = subparsers.add_parser('step4', help=step4_help)
 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
         setup()
     elif args.command == 'step1':
         step1()
-
+    elif args.command == 'step4':
+        step4()
+   
 if __name__ == '__main__':
     main()
