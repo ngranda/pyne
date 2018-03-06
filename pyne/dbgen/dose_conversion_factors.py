@@ -76,9 +76,9 @@ def make_dose_factors(args):
                 return
     
     # Grab the dose factors from each file
-    print('Grabbing dose factors...')
+    print('Grabbing dose conversion factors...')
     dose_factors = grab_dose_factors()
 
     # Make the 3 dose factor tables and writes them to file
-    print("Making dose factor tables...")
+    print("Making dose conversion factors tables...")
     make_dose_tables(dose_factors, nuc_data, build_dir)

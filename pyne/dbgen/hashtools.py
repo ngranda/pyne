@@ -15,7 +15,7 @@ warn(__name__ + " is not yet QA compliant.", QAWarning)
 # list of nodes from distinct data sets
 nodelist = ['/atomic_mass', '/material_library',
             '/neutron/eaf_xs', '/neutron/scattering_lengths',
-            '/neutron/simple_xs', '/decay', '/dose_factors']
+            '/neutron/simple_xs', '/decay', '/dose_factors', '/dose_conversion_factors']
 
 
 def check_hashes(nuc_data):
