@@ -5,7 +5,7 @@ import io
 
 import numpy as np
 from pyne.mesh import Mesh
-from pyne.partisn import write_partisn_input, isotropic_vol_source
+from pyne.partisn import write_partisn_input, isotropic_vol_source, mesh_to_isotropic_source
 from pyne.dagmc import discretize_geom, load
 from pyne import nucname
 from pyne.bins import pointwise_collapse
@@ -51,6 +51,10 @@ step3:
 
 # Prepare PARTISN input for adjoint neutron transport
 step4:
+    # Path to neutron geometry hdf5 file
+    geom_file:
+    # Path to adj neutron source hdf5 file
+    adj_n_src_file:
 
 # Generate Monte Carlo variance reduction parameters
 # (biased source and weight windows)
@@ -204,6 +208,43 @@ def step1(cfg):
         nuc_hdf5path="/nucid",
         fine_per_coarse=1)
 
+def step4(cfg):
+    """ This function writes the PARTISN input file for the adjoint neutron 
+    transport   
+    Parameters
+    ----------
+    cfg : dictionary
+        User input for step 4 from the config.yml file
+    """
+    # Get user-input from config file
+    geom = cfg['geom_file']
+    adj_n_src = cfg['adj_n_src_file']
+    cells = [cfg['src_cell']]
+    src_vol = [float(cfg['src_vol'])]
+
+    # geom = config.get('step4', 'geom_file')
+    # adj_n_src = config.get('step4', 'adj_n_src_file')
+
+    mesh = Mesh(structured=True, mesh=adj_n_src)
+    source = mesh_to_isotropic_source(mesh, "adj_n_src")
+
+    # PARTISN input
+    ngroup = 217  # total number of energy groups
+    cards = _cards(source) 
+    names_dict = _names_dict() # dictionary of isotopes (PyNE nucids to bxslib names)
+
+    write_partisn_input(
+        mesh, 
+        geom, 
+        ngroup, 
+        cards=cards, 
+        names_dict=names_dict, 
+        data_hdf5path="/materials", 
+        nuc_hdf5path="/nucid", 
+        fine_per_coarse=1)
+
+    print('Run PARTISN and then run gtcadis.py step5')
+
 
 def main():
     """ This function manages the setup and steps 1-5 for the GT-CADIS workflow.
@@ -215,11 +256,13 @@ def main():
     setup_help = ('Prints the file "config.yml" to be\n'
                   'filled in by the user.\n')
     step1_help = 'Creates the PARTISN input file for adjoint photon transport.'
+    step4_help = 'Creates the PARTISN input file for adjoint neutron transport'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
+    step4_parser = subparsers.add_parser('step4', help=step4_help)
 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
@@ -230,6 +273,8 @@ def main():
 
     if args.command == 'step1':
         step1(cfg['step1'])
+    elif args.command == 'step4':
+        step1(cfg['step4'])
 
 
 if __name__ == '__main__':
