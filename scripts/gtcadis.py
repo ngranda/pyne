@@ -231,21 +231,18 @@ def step3(cfg2, cfg3):
     decay_times = [cfg2['decay_time'].split(',')]
     at = cfg3['atflux']
 
-    # # Parse config file
-    # config = ConfigParser.ConfigParser()
-    # config.read(config_filename)
-    # geom = config.get('step2', 'geom_file')
-    # dt = [config.get('step2', 'decay_time').split(',')]
-    # at = config.get('step3', 'atflux')
+    # Constants 
+    groups = 217
+    n_groups = 175
+    p_groups = 42
     
-
     # Tag mesh with adjoint flux values from atflux file
     os.system('cp blank_mesh.h5m adj_p_mesh.h5m')
     m = Mesh(structured=True, mesh='adj_p_mesh.h5m')
     at = Atflux(at)
     at.to_mesh(m, "flux")
 
-    m.flux = IMeshTag(217)
+    m.flux = IMeshTag(groups)
     adj_p = m.flux[:]
    
     # Load geometry and get material assignments 
@@ -257,18 +254,18 @@ def step3(cfg2, cfg3):
     T = np.load('tempT.npy')
 
     # Create tag for adjoint neutron source
-    m.adj_n_src = IMeshTag(217)
+    m.adj_n_src = IMeshTag(groups)
     
     dg = discretize_geom(m)
     for t in range(len(decay_times)): 
-        temp = np.zeros(shape=(len(m), 217))
+        temp = np.zeros(shape=(len(m), groups))
         for i in range(len(m)):
             for row in np.atleast_1d(dg[dg["idx"] == i]):
                 cell = row[1]
                 mat = cell_mats[cell] - 1
-                for g in range(175):
-                    for h in range(42):
-                        temp[i, g + 42] += adj_p[i, h]*T[mat, t, g, h]
+                for g in range(n_groups):
+                    for h in range(p_groups):
+                        temp[i, g + p_groups] += adj_p[i, h]*T[mat, t, g, h]
         m.adj_n_src[:] = temp
         m.mesh.save("adj_n_src{0}.h5m".format(decay_times[t]))
 
