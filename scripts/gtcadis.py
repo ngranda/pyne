@@ -4,11 +4,14 @@ import yaml
 import io
 
 import numpy as np
-from pyne.mesh import Mesh
+from pyne.mesh import Mesh, IMeshTag
 from pyne.partisn import write_partisn_input, isotropic_vol_source
-from pyne.dagmc import discretize_geom, load
+from pyne.dagmc import discretize_geom, load, cell_material_assignments
 from pyne import nucname
+from pyne.material import MaterialLibrary
 from pyne.bins import pointwise_collapse
+from pyne.alara import calc_T
+
 
 
 config_filename = 'config.yml'
@@ -45,6 +48,15 @@ step1:
 
 # Calculate T matrix for each material
 step2:
+    # Path to hdf5 geometry file for adjoint neutron transport 
+    geom_file: 
+    # Path to processed nuclear data 
+    # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)
+    data_dir: 
+    # Single pulse irradiation time
+    irr_time:
+    # Single decay time of interest
+    decay_time: 
 
 # Calculate adjoint neutron source
 step3:
@@ -205,6 +217,42 @@ def step1(cfg):
         fine_per_coarse=1)
 
 
+def step2(cfg):
+    """ This function ...
+    Parameters
+    ----------
+    cfg : dictionary
+        User input for step 2 from the config.yml file
+    """
+
+    # Get user-input from config file 
+    geom = cfg['geom_file']
+    data_dir = cfg['data_dir']
+    irr_times = ['irr_time']
+    decay_times = ['decay_time']
+
+    # Get user input from config file
+    # geom = config.get('step2', 'geom_file')
+    # data_dir = config.get('step2', 'data_dir')
+    # irr_times = [config.getfloat('step2', 'irr_time')]
+    # decay_times = [config.getfloat('step2', 'decay_time')]
+
+    # For a flat, 175 group neutron spectrum, magnitude 1E12
+    n_groups = 175
+    neutron_spectrum = [1]*n_groups # will be normalized
+    flux_magnitudes = [1.75E14] # 1E12*175
+    
+    # Get materials from geometry file
+    ml = MaterialLibrary(geom)
+    mats = list(ml.values())
+
+    # Calculate T
+    T = calc_T(data_dir, mats, neutron_spectrum, irr_times, flux_magnitudes, decay_times, remove=True)
+    np.set_printoptions(threshold=np.nan)
+    # Save numpy array that will be loaded by step 3
+    np.save('tempT.npy', T)
+
+
 def main():
     """ This function manages the setup and steps 1-5 for the GT-CADIS workflow.
     """
@@ -215,12 +263,14 @@ def main():
     setup_help = ('Prints the file "config.yml" to be\n'
                   'filled in by the user.\n')
     step1_help = 'Creates the PARTISN input file for adjoint photon transport.'
+    step2_help = 'Calculates the T matrix for each material in the geometry.'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
-
+    step2_parser = subparsers.add_parser('step2', help=step2_help)
+ 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
         setup()
@@ -230,6 +280,8 @@ def main():
 
     if args.command == 'step1':
         step1(cfg['step1'])
+    elif args.command == 'step2':
+        step1(cfg['step2'])
 
 
 if __name__ == '__main__':
