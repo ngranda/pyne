@@ -21,10 +21,6 @@ if not HAVE_PYMOAB:
 
 from pyne.mesh import Mesh, NativeMeshTag
 
-try:
-    from pyne import dagmc
-except:
-    raise SkipTest
 
 from pyne import partisn
 
@@ -183,6 +179,12 @@ def test_get_coord_sys_3D():
 def get_zones_no_void():
     """Test the _get_zones function if no void is in the meshed area.
     """
+
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     # hdf5 test file
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
     hdf5 = THIS_DIR + '/files_test_partisn/partisn_test_geom.h5m'
@@ -190,7 +192,6 @@ def get_zones_no_void():
     nuc_hdf5path = '/nucid'
 
     # Load dagmc geometry
-    from pyne import dagmc
     dagmc.load(hdf5)
 
     # mesh
@@ -204,9 +205,10 @@ def get_zones_no_void():
     num_rays = 144
     grid = True
     dg = None
+    mat_assigns = None
 
     unique_names = {'mat:Helium, Natural': 'HELIUMNA', 'mat:Mercury':'MERCURY1'}
-    voxel_zones, zones = partisn._get_zones(mesh, hdf5, bounds, num_rays, grid, dg, unique_names)
+    voxel_zones, zones = partisn._get_zones(mesh, hdf5, bounds, num_rays, grid, dg, mat_assigns, unique_names)
 
     voxel_zones_expected = np.array([[1, 1, 1, 1],
                                     [2, 2, 2, 2],
@@ -235,9 +237,15 @@ def test_get_zones_no_void():
     p.join()
     assert(r.get() == [True, True])
 
+
 def get_zones_iteration_order():
     """Test that _get_zones function gives results in zyx order.
     """
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     # hdf5 test file
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
     hdf5 = THIS_DIR + '/files_test_partisn/fractal_box.h5m'
@@ -245,7 +253,6 @@ def get_zones_iteration_order():
     nuc_hdf5path = '/nucid'
 
     # Load dagmc geometry
-    from pyne import dagmc
     dagmc.load(hdf5)
 
     bounds = [-5., 0., 5.]
@@ -255,9 +262,10 @@ def get_zones_iteration_order():
     num_rays = 9
     grid = True
     dg = None
+    mat_assigns = None
     unique_names = {'mat:m1': 'M1', 'mat:m2': 'M2', 'mat:m3': 'M3', 'mat:m4':'M4'}
 
-    voxel_zones, zones = partisn._get_zones(mesh, hdf5, bounds, num_rays, grid, dg, unique_names)
+    voxel_zones, zones = partisn._get_zones(mesh, hdf5, bounds, num_rays, grid, dg, mat_assigns, unique_names)
 
     voxel_zones_expected = np.array([[1, 2],
                                      [1, 4],
@@ -286,13 +294,17 @@ def test_get_zones_iteration_order():
 def get_zones_with_void():
     """Test the _get_zones function if a void is present.
     """
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     # hdf5 test file
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
     hdf5 = THIS_DIR + '/files_test_partisn/partisn_test_geom.h5m'
     data_hdf5path = '/materials'
     nuc_hdf5path = '/nucid'
 
-    from pyne import dagmc
     dagmc.load(hdf5)
 
     # mesh
@@ -306,9 +318,10 @@ def get_zones_with_void():
     num_rays = 400
     grid = True
     dg = None
+    mat_assigns = None
 
     unique_names = {'mat:Helium, Natural': 'HELIUMNA', 'mat:Mercury':'MERCURY1'}
-    voxel_zones, zones = partisn._get_zones(mesh, hdf5, bounds, num_rays, grid, dg, unique_names)
+    voxel_zones, zones = partisn._get_zones(mesh, hdf5, bounds, num_rays, grid, dg, mat_assigns, unique_names)
 
     # expected results
     voxel_zones_expected = np.array([[1, 1, 1, 1],
@@ -359,6 +372,11 @@ def test_check_fine_mesh_total_false():
 
 
 def write_partisn_input_1D():
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     # Path to hdf5 test file
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
     hdf5 = THIS_DIR + '/files_test_partisn/partisn_test_geom.h5m'
@@ -436,6 +454,11 @@ def write_partisn_input_2D():
 def test_write_partisn_input_2D():
     """Test full input file creation for 2D case
     """
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     p = multiprocessing.Pool()
     r = p.apply_async(write_partisn_input_2D)
     p.close()
@@ -478,6 +501,11 @@ def write_partisn_input_3D():
 def test_write_partisn_input_3D():
     """Test full input file creation for 3D case
     """
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     p = multiprocessing.Pool()
     r = p.apply_async(write_partisn_input_3D)
     p.close()
@@ -486,6 +514,11 @@ def test_write_partisn_input_3D():
 
 
 def write_partisn_input_with_names_dict():
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     # Path to hdf5 test file
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
     hdf5 = THIS_DIR + '/files_test_partisn/partisn_test_geom.h5m'
@@ -536,6 +569,7 @@ def test_write_partisn_input_with_names_dict():
 def write_partisn_input_options():
     """Test PARTISN input file creation with a slew of keyword arguments
     """
+
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
     hdf5 = os.path.join(THIS_DIR, 'files_test_partisn', 'partisn_test_geom.h5m')
     input_file = os.path.join(THIS_DIR, 'files_test_partisn', 'partisn_options.inp')
@@ -545,8 +579,9 @@ def write_partisn_input_options():
     mesh=Mesh(structured_coords=sc, structured=True)
     ngroup = 66
 
-    dagmc.load(hdf5)
-    dg = dagmc.discretize_geom(mesh, num_rays=100, grid=True)
+    dg = [(0, 1, 1.0, 0.0), (1, 1, 0.5, 0.04714045207910317),
+          (1, 2, 0.5, 0.04714045207910317), (2, 2, 1.0, 0.0)]
+    mat_assigns = {1: 'mat:Helium, Natural', 2: 'mat:Mercury', 5: 'mat:Graveyard', 6: u'mat:Vacuum'}
 
     cards = {"block1": {"isn": 6,
                         "maxscm": 3000000,
@@ -571,8 +606,8 @@ def write_partisn_input_options():
 
     with warnings.catch_warnings(record=True) as w:
         partisn.write_partisn_input(mesh, hdf5, ngroup, input_file=input_file,
-                                    dg=dg, fine_per_coarse=3, cards=cards,
-                                    num_rays=9) # include num_rays to get warning
+                                    dg=dg, mat_assigns=mat_assigns, fine_per_coarse=3,
+                                    cards=cards, num_rays=9) # include num_rays to get warning
 
     out1 = len(w) == 1 # verify we get a warning from including num_rays and dg
     out2 = filecmp.cmp(input_file, file_expected)
@@ -581,7 +616,7 @@ def write_partisn_input_options():
 
 
 def test_write_partisn_input_options():
-    """Test full input file creation for 1D case with lot of key work args
+    """Test full input file creation for 1D case with a lot of key work args
     """
     p = multiprocessing.Pool()
     r = p.apply_async(write_partisn_input_options)
@@ -602,6 +637,11 @@ def test_format_repeated_vector():
 def test_mesh_to_isotropic_source():
     """Test isotropic SOURCF generation.
     """
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     m = Mesh(structured=True, structured_coords=[range(5), range(5), range(5)])
     m.src = NativeMeshTag(4, float)
     # These source values were carefully choosen so that:
@@ -634,6 +674,11 @@ def test_mesh_to_isotropic_source():
 def test_isotropic_vol_source():
     """Test isotropic volumetric source generation from DAGMC geometry.
     """
+    try:
+        from pyne import dagmc
+    except:
+        raise SkipTest
+
     sc = np.linspace(-25, 25, 6)
     m = Mesh(structured=True, structured_coords = [sc, sc, sc])
 

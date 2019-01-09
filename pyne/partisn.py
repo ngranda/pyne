@@ -39,11 +39,14 @@ warn(__name__ + " is not yet QA compliant.", QAWarning)
 # Mesh specific imports
 from pyne.mesh import HAVE_PYMOAB
 
-print(HAVE_PYMOAB)
+try:
+    from pyne import dagmc
+    HAVE_DAGMC = True
+except:
+    HAVE_DAGMC = False
 
 if HAVE_PYMOAB:
     from pyne.mesh import Mesh, StatMesh, MeshError, NativeMeshTag
-    from pyne import dagmc
 else:
     warn("the PyMOAB optional dependency could not be imported. "
          "All aspects of the partisn module are not imported.",
@@ -114,7 +117,12 @@ def write_partisn_input(mesh, hdf5, ngroup, **kwargs):
     dg : record array, optional, default = None
         The output of pyne.dagmc.discretize_geom(). Use this input option if
         discretize_geom() has already been run, to avoid duplicating this
-        expensive step.
+        expensive step. If HAVE_DAGMC=False, then this must be supplied.
+    mat_assigns : dict, optional, default = None
+        The output from pyne.cell_material_assignments().
+        Dictionary of the cell to material assignments. Keys are cell
+        numbers and values are material names. If HAVE_DAGMC=False, then
+        this must be supplied.
     fine_per_coarse : int, optional, default = 1
         The number of fine mesh intervals per coarse mesh interval.
     data_hdf5path : string, optional, default = /materials
@@ -133,6 +141,7 @@ def write_partisn_input(mesh, hdf5, ngroup, **kwargs):
     # Read optional inputs:
     cards = kwargs.get('cards', {})
     dg = kwargs.get('dg', None)
+    mat_assigns = kwargs.get('mat_assigns', None)
     num_rays = kwargs.get('num_rays', 10)
     grid = kwargs.get('grid', False)
     if dg is not None and ('num_rays' in kwargs or 'grid' in kwargs):
@@ -165,7 +174,8 @@ def write_partisn_input(mesh, hdf5, ngroup, **kwargs):
     block01['ngroup'] = ngroup
     block01['mt'] = len(mat_lib)
 
-    block02['zones'], block04['assign'] = _get_zones(mesh, hdf5, bounds, num_rays, grid, dg, unique_names)
+    block02['zones'], block04['assign'] = _get_zones(mesh, hdf5, bounds, num_rays,
+                                            grid, dg, mat_assigns, unique_names)
     block01['nzone'] = len(block04['assign'])
     block02['fine_per_coarse'] = fine_per_coarse
 
@@ -302,14 +312,18 @@ def _get_coord_sys(mesh):
     return igeom, bounds
 
 
-def _get_zones(mesh, hdf5, bounds, num_rays, grid, dg, unique_names):
+def _get_zones(mesh, hdf5, bounds, num_rays, grid, dg, mat_assigns, unique_names):
     """Get the minimum zone definitions for the geometry.
     """
 
     # Discretize the geometry and get cell fractions
     if dg is None:
-        dagmc.load(hdf5)
-        dg = dagmc.discretize_geom(mesh, num_rays=num_rays, grid=grid)
+        if not HAVE_DAGMC:
+            raise RuntimeError("DAGMC is not available."
+                               "Unable to discretize the geometry.")
+        else:
+            dagmc.load(hdf5)
+            dg = dagmc.discretize_geom(mesh, num_rays=num_rays, grid=grid)
 
     # Reorganize dictionary of each voxel's info with the key the voxel number
     # and values of cell and volume fraction
@@ -324,7 +338,13 @@ def _get_zones(mesh, hdf5, bounds, num_rays, grid, dg, unique_names):
         voxel[idx]['vol_frac'].append(i[2])
 
     # get material to cell assignments
-    mat_assigns = dagmc.cell_material_assignments(hdf5)
+    if mat_assigns is None:
+        if not HAVE_DAGMC:
+            raise RuntimeError("DAGMC is not available."
+                               "Unable to get cell material assignments.")
+        else:
+            mat_assigns = dagmc.cell_material_assignments(hdf5)
+
     # Replace the names in the material assignments with unique names
     temp = {}
     for i, name in mat_assigns.items():
@@ -711,7 +731,7 @@ def _write_input(title, block01, block02, block03, block04, block05, cards, file
               header += " {},".format(mis)
            header += "\n"
     header += "/"
-	# Prepend header to begining of file
+    # Prepend header to begining of file
     partisn = header + partisn
 
     # Write to the file
@@ -901,8 +921,12 @@ def isotropic_vol_source(geom, mesh, cells, spectra, intensities, **kwargs):
     intensities = {cell: inten for cell, inten in zip(cells, intensities)}
 
     # ray trace
-    dagmc.load(geom)
-    dg = dagmc.discretize_geom(mesh, num_rays=num_rays, grid=grid)
+    if not HAVE_DAGMC:
+        raise RuntimeError("DAGMC is not available."
+                    "Cannot run isotropic_vol_source().")
+    else:
+        dagmc.load(geom)
+        dg = dagmc.discretize_geom(mesh, num_rays=num_rays, grid=grid)
 
     # determine  source intensities
     data = np.zeros(shape=(len(mesh), len(spectra[0])))
